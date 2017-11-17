@@ -1,3 +1,5 @@
+
+
 // Console input and output.
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
@@ -17,9 +19,20 @@
 
 static void consputc(int);
 
+#define INPUT_BUF 128
+struct input {
+  char buf[INPUT_BUF];
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
+} input;
+
 static int panicked = 0;
 
 static int active = 1;
+
+struct input buf1 = {"", 0, 0, 0};
+struct input buf2 = {"", 0, 0, 0};
 
 static struct {
   struct spinlock lock;
@@ -180,15 +193,17 @@ consputc(int c)
   cgaputc(c);
 }
 
-#define INPUT_BUF 128
-struct {
-  char buf[INPUT_BUF];
-  uint r;  // Read index
-  uint w;  // Write index
-  uint e;  // Edit index
-} input;
-
 #define C(x)  ((x)-'@')  // Control-x
+
+
+void copy_buf(char *dst, char *src, int len)
+{
+  int i;
+
+  for (i = 0; i < len; i++) {
+    dst[i] = src[i];
+  }
+}
 
 void
 consoleintr(int (*getc)(void))
@@ -206,8 +221,12 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       if (active == 1){
         active = 2;
+        buf1 = input;
+        input = buf2;
       }else{
         active = 1;
+        buf2 = input;
+        input = buf1;
       } 
       doconsoleswitch = 1;
       break;
@@ -256,7 +275,7 @@ consoleread(struct inode *ip, char *dst, int n)
   target = n;
   acquire(&cons.lock);
   while(n > 0){
-    while(input.r == input.w){
+    while((input.r == input.w) || (active != ip->minor)){
       if(myproc()->killed){
         release(&cons.lock);
         ilock(ip);
