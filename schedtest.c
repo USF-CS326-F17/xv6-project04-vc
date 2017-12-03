@@ -48,7 +48,6 @@ main(int argc, char *argv[])
   struct child_info child_infos[MAX_PROCS];
   struct child_pipe child_pipes[MAX_PROCS];
 
-
   if (argc != 3) {
     printf(1, "usage: schedtest <num_procs> <wall_ticks>\n");
     exit();
@@ -96,6 +95,5 @@ main(int argc, char *argv[])
   }
 
   printf(1, "schedtest: finished\n");
-
   exit();
 }
